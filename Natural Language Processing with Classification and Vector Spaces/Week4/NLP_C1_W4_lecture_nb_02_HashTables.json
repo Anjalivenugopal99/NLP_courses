@@ -1,0 +1,655 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Hash functions and multiplanes\n",
+    "\n",
+    "\n",
+    "In this lab, we are going to practice the most important concepts related to the hash functions explained in the videos. You will be using these in this week's assignment.\n",
+    "\n",
+    "A key point for the lookup using hash functions is the calculation of the hash key or bucket id that we assign for a given entry. In this notebook, we will cover:\n",
+    "\n",
+    "* Basic hash tables\n",
+    "* Multiplanes\n",
+    "* Random planes"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Basic Hash tables\n",
+    "\n",
+    "Hash tables are data structures that allow indexing data to make lookup tasks more efficient. \n",
+    "In this part, you will see the implementation of the simplest hash function."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np                # library for array and matrix manipulation\n",
+    "import pprint                     # utilities for console printing \n",
+    "from utils_nb import plot_vectors # helper function to plot vectors\n",
+    "import matplotlib.pyplot as plt   # visualization library\n",
+    "\n",
+    "pp = pprint.PrettyPrinter(indent=4) # Instantiate a pretty printer"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In the next cell, we will define a straightforward hash function for integer numbers. The function will receive a list of integer numbers and the desired amount of buckets. The function will produce a hash table stored as a dictionary, where keys contain the hash keys, and the values will provide the hashed elements of the input list. \n",
+    "\n",
+    "The hash function is just the remainder of the integer division between each element and the desired number of buckets."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def basic_hash_table(value_l, n_buckets):\n",
+    "    \n",
+    "    def hash_function(value, n_buckets):\n",
+    "        return int(value) % n_buckets\n",
+    "    \n",
+    "    hash_table = {i:[] for i in range(n_buckets)} # Initialize all the buckets in the hash table as empty lists\n",
+    "\n",
+    "    for value in value_l:\n",
+    "        hash_value = hash_function(value,n_buckets) # Get the hash key for the given value\n",
+    "        hash_table[hash_value].append(value) # Add the element to the corresponding bucket\n",
+    "    \n",
+    "    return hash_table"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now let's see the hash table function in action. The pretty print function (`pprint()`) will produce a visually appealing output. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "{   0: [100, 10],\n",
+      "    1: [],\n",
+      "    2: [],\n",
+      "    3: [],\n",
+      "    4: [14],\n",
+      "    5: [],\n",
+      "    6: [],\n",
+      "    7: [17, 97],\n",
+      "    8: [],\n",
+      "    9: []}\n",
+      "{0: [100, 10], 1: [], 2: [], 3: [], 4: [14], 5: [], 6: [], 7: [17, 97], 8: [], 9: []}\n"
+     ]
+    }
+   ],
+   "source": [
+    "value_l = [100, 10, 14, 17, 97] # Set of values to hash\n",
+    "hash_table_example = basic_hash_table(value_l, n_buckets=10)\n",
+    "pp.pprint(hash_table_example)\n",
+    "print(hash_table_example)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "In this case, the bucket key must be the rightmost digit of each number."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Planes\n",
+    "\n",
+    "Multiplanes hash functions are other types of hash functions. Multiplanes hash functions are based on the idea of numbering every single region that is formed by the intersection of n planes. In the following code, we show the most basic forms of the multiplanes principle. First, with a single plane:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/png": "iVBORw0KGgoAAAANSUhEUgAAAfQAAAHWCAYAAACBsnu3AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAADl0RVh0U29mdHdhcmUAbWF0cGxvdGxpYiB2ZXJzaW9uIDMuMC4zLCBodHRwOi8vbWF0cGxvdGxpYi5vcmcvnQurowAAIABJREFUeJzt3XmQXNV59/HvM1pAIyuWWQRIaGF7WQIEyxPM8gZwBYOlIsjBmBIeA7FfakIMDknZ8YutxI6TUsV2EorCxuBJ4QinJrKDYwX5RSyG2MbEZpEAAWIRsiwJWcKSgIhIAxJC5/2jW2IkZjRL9/TtPv39VE3dvuee6fPcOqP+6d6+fTtSSkiSpMbWUnQBkiSpcga6JEkZMNAlScqAgS5JUgYMdEmSMmCgS5KUgYoDPSImR8SPI+LZiFgWEdf20ici4saIWBERT0bE9ErHlSRJbxtZhefYAXwmpfRYRIwDlkTEj1JKz/ToMwM4pvzzfuDm8lKSJFVBxUfoKaX1KaXHyo//B3gWmLRXt1nAd1LJQ8D4iDis0rElSVJJVd9Dj4hpwHuBh/faNAl4scf6Wt4Z+pIkaYiqccodgIh4F/DvwJ+llF7be3Mvv9LrPWcjogPoABg7duz7jjvuuGqVKClDS5b0ve1976tdHVI1LFmyZFNK6eCh/G5VAj0iRlEK866U0g966bIWmNxj/XBgXW/PlVLqBDoB2tra0uLFi6tRoqRMTZsGq1e/s33qVPDlQ40mInr5ax6YalzlHsCtwLMppev76LYQuLx8tftpwOaU0vpKx1ZxurpKL6QtLaVlV1fRFalZzZ0Lra17trW2ltqlZlKNI/QzgcuApyLiiXLbF4ApACmlW4BFwExgBdANfKIK46ogXV3Q0QHd3aX11atL6wDt7cXVpea0629uzhxYswamTCmFuX+LajZRz1+f6in3+rSvU5yrVtW6GknKR0QsSSm1DeV3vVOcBm3NmsG1S5KGn4GuQZsyZXDtkqThZ6Br0LwISZLqj4GuQWtvh87O0nvmEaVlZ6cXIUlSkap2Yxk1l/Z2A1yS6olH6JIkZcBAlyQpAwa6JEkZMNAlScqAgS5JUgYMdEmSMmCgS5KUAQNdkqQMGOiSJGXAQJckKQMGuiRJGTDQJUnKgIEuSVIGDHRJkjJgoEuSlAEDXZKkDBjokiRlwECXJCkDBrokSRkw0CVJyoCBLklSBgx0SZIyYKBLkpQBA12SpAwY6JIkZcBAlyQpAwa6JEkZMNAlScpAcwd6VxdMmwYtLaVlV1fRFUmSNCQjiy6gMF1d0NEB3d2l9dWrS+sA7e3F1SVJ0hA07xH6nDlvh/ku3d2ldkmSGkzzBvqaNYNrlySpjjVvoE+ZMrh2SZLqWPMG+ty50Nq6Z1tra6ldkqQG07yB3t4OnZ0wdSpElJadnV4QJ0lqSM17lTuUwtsAlyRloHmP0CVJyoiBLklSBgx0SZIyYKBLkpQBA12SpAxUJdAj4tsRsSEinu5j+zkRsTkinij/fLEa40qSpJJqfWxtHvAN4Dv76POzlNIFVRpPkiT1UJUj9JTSA8Ar1XguSZI0eLV8D/30iFgaEXdFxG/31SkiOiJicUQs3rhxYw3LkySpcdUq0B8DpqaUfgf4OvAffXVMKXWmlNpSSm0HH3xwjcqTJKmx1STQU0qvpZS2lB8vAkZFxEG1GFuSpGZQk0CPiEMjIsqPTy2P+3ItxpYkqRlU5Sr3iJgPnAMcFBFrgS8BowBSSrcAFwN/EhE7gNeB2SmlVI2xJUlSlQI9pXRpP9u/QeljbZIkaRh4pzhJkjJgoEuSlAEDXZKkDBjokiRlwECXJCkDBrokSRkw0CVJyoCBLklSBgx0SZIyYKBLkpQBA12SpAwY6JIkZcBAlyQpAwa6JEkZMNAlScqAgS5JUgYMdEmSMmCgS5KUAQNdkqQMGOiSJGXAQJckKQMGuiRJGTDQJUnKgIEuSVIGDHRJkjJgoEuSlAEDXZKkDBjokiRlwECXJCkDBrokSRkw0CVJyoCBLklSBgx0SZIyYKBLkpQBA12SpAwY6JIkZcBAlyQpAwa6JEkZMNAlScqAgS5JUgYMdElqAlu3buX73/8+jz32WNGlaJgY6JKUqc2bN9PV1cV5553HgQceyOzZs7nhhhuKLkvDZGTRBUiSqufll1/mjjvuYN68eTz88MOMHj2aLVu2ADBu3DiuuOKKgivUcDHQJanBvfTSSyxYsIB58+axdOlSRo4cydatWwHYvn377n4Rwdlnn11UmRpmBrokNbBZs2Zxzz33MGLECLq7uwHYtm3bO/q1tLTw0Y9+lJEjfdnPVVXeQ4+Ib0fEhoh4uo/tERE3RsSKiHgyIqZXY1xJanaTJk3aI8z7MnbsWP7oj/6oNkWpENW6KG4e8KF9bJ8BHFP+6QBurtK4ktTUbrrpJq688kpaW1v32W/UqFGcccYZNapKRahKoKeUHgBe2UeXWcB3UslDwPiIOKwaY0tSM4sIbrjhBq6++uo+Q33EiBFceumltLT4waac1Wp2JwEv9lhfW26TJFUoIvja177GpEm9v6yOGTOGyy+/vMZVqdZqFejRS1vqtWNER0QsjojFGzduHOayJCkPn/3sZ3nhhRc44YQT3nGk3trayu/+7u8WVJlqpVaBvhaY3GP9cGBdbx1TSp0ppbaUUtvBBx9ck+IkqZF96lOf4h//8R+ZO3cuy5Yt48tf/jJjxowBYOTIkVx22WVE9HZcpZzUKtAXApeXr3Y/DdicUlpfo7ElKVuXX345N998M9dffz1f+MIXgNLR+le+8hXGjBnDqFGjuOyyywquUrVQlQ8kRsR84BzgoIhYC3wJGAWQUroFWATMBFYA3cAnqjGuJDWzSy65hNtvv52bb76Zq666ao9tf/qnf8p+++3HHXfcwcknn1xQhaqlSKnXt7LrQltbW1q8eHHRZUhS3ZkxYwZ33303//zP/+znyzMSEUtSSm1D+V1vGSRJDeass87iZz/7GfPnz2f27NlFl6M6YaBLUgOZPn06jz/+OAsWLODDH/5w0eWojhjoktQAUkocd9xxLF++nEWLFjFjxoyiS1Kd8bZBOevqgmnToKWltOzqKroiSUOQUuLwww9n+fLl3H///Ya5euUReq66uqCjA3Z9YcPq1aV1gPb24uqSNCgpJd7znvewefNmHnzwQc4888yiS1Kd8gg9V3PmvB3mu3R3l9olNYSUEiNHjmTz5s088sgjhrn2ySP0XK1ZM7h2SXVl586djBgxAoDHH3+cU045peCKVO88Qs/VlCmDa5dUN956663dYb5s2TLDXANioOdq7lzY+6sUW1tL7ZLq1o4dOxg5snTydPny5ZxwwgkFV6RGYaDnqr0dOjth6lSIKC07O70gTqpjb775JqNGjQLgV7/6Fcccc0zBFamR+B56ztrbDXCpQWzbto39998fgBdffJHDDz+84IrUaAx0SSrY66+/vvs7zNevX8+hhx5acEVqRAa6JBVo69atvOtd7wJg48aNHHTQQQVXpEZloEtSQV577TXe/e53A/Dqq68yfvz4gitSI/OiOEkqwKuvvro7zDdv3myYq2IGuiTV2KZNmzjggAMA2LJlC7/1W79VcEXKgYEuSTX00ksvcfDBBwPQ3d3N2LFjC65IuTDQJalG1q5dy2GHHQbAG2+8wZgxYwquSDkx0CWpBn71q18xefJkALZv385+++1XcEXKjYEuScNs+fLlHHnkkcCed4OTqslAl6RhtGzZMo499lhgz/u0S9VmoEvSMHniiSc48cQTgT2/QU0aDga6JA2DRx55hPe+972MHDmSnTt30tLiy62Gl39hklRlDz74IO9///sZP34827dvJyKKLklNwECXpCq6//77+b3f+z0mTpzIK6+8YpirZgx0SaqSu+66i3PPPZdjjz2WX//614a5aspAl6QqWLBgATNnzmT69Ok899xzRZejJmSgS1KF5s+fz0UXXcRZZ53FkiVLii5HTcpAl6QKzJs3j4997GPMmDGDn/70p0WXoyZmoEvSEH3zm9/kE5/4BBdffDGLFi0quhw1OQNdkobg+uuv5+qrr+aKK67g9ttvL7ocyUCXpMGaO3cun/nMZ/jUpz7FvHnzii5HAgx0SRqUOXPm8Jd/+Zd89rOf5aabbiq6HGk3vyVAkgboz//8z7nhhhv4q7/6K/7mb/6m6HKkPRjokjQAf/zHf0xnZyd/93d/x3XXXVd0OdI7GOiS1I+Pf/zjdHV1ccMNN3DttdcWXY7UKwNdkvbhoosuYsGCBXzrW9+io6Oj6HKkPhnoktSH888/n3vvvZfbbruNyy+/vOhypH0y0CWpF2eeeSY///nP+d73vscll1xSdDlSvwx0SdrLKaecwtKlS7njjju48MILiy5HGhADXZLKUkocffTRrFy5krvvvpvzzz+/6JKkATPQJYlSmB966KFs2LCB//zP/+QDH/hA0SVJg2KgS2p6KSXGjRvH1q1b+a//+i/OOOOMokuSBs1Al9TUdu7cyYgRIwB49NFHaWtrK7giaWgMdElNq2eYL126lJNPPrngiqShq8qXs0TEhyLi+YhYERHvuCdiRJwTEZsj4onyzxerMa4kDdVbb721O8yfeeYZw1wNr+Ij9IgYAdwEfBBYCzwaEQtTSs/s1fVnKaULKh1Pkiq1Y8cORo0aBcALL7zA0UcfXXBFUuWqcYR+KrAipbQypbQd+C4wqwrPK0lV9+abb+4O81WrVhnmykY1An0S8GKP9bXltr2dHhFLI+KuiPjtKowrSYOybds2Ro8eDcDatWuZOnVqwRVJ1VONi+Kil7a01/pjwNSU0paImAn8B3BMr08W0QF0AEyZMqUK5UkSvP7667S2tgLw0ksvccghhxRckVRd1ThCXwtM7rF+OLCuZ4eU0msppS3lx4uAURFxUG9PllLqTCm1pZTaDj744CqUJ6nZbdmyZXeYb9q0yTBXlqoR6I8Cx0TEERExGpgNLOzZISIOjYgoPz61PO7LVRhbkvZp8+bNjBs3DoBXX32VAw88sOCKpOFR8Sn3lNKOiLgGuAcYAXw7pbQsIq4qb78FuBj4k4jYAbwOzE4p7X1aXpKq6pVXXtkd4K+99truYJdyFPWcq21tbWnx4sVFlyGpAW3cuJEJEyYAsHXr1t2n3KV6FhFLUkpDul1hVW4sI0n1ZP369bvDvOfFcFLODHRJWXnxxReZOHEiUPqY2v77719wRVJtGOiSsrFy5crdH3fdvn377s+cS83AQJeUheeff56jjjoK2PPWrlKzMNAlNbynn36a4447DiiF+a4vXZGaiYEuqaE9/vjjnHTSScCe36AmNRsDXVLDevjhh5k+fTqjRo1i586dtLT4kqbm5V+/pIb0wAMPcNppp3HAAQewbds2yjejlJqWgS6p4dx3332cffbZTJ48mU2bNhnmEga6pAZz55138sEPfpDjjz+eNWvWGOZSmYEuqWH84Ac/4IILLqCtrY1nnnmm6HKkumKgS2oI//qv/8pHPvIRzjnnHB599NGiy5HqjoEuqe7deuuttLe3c8EFF/DjH/+46HKkumSgS6pr3/jGN7jyyiuZPXs2P/zhD4suR6pbBrqkuvUP//APfPrTn+aTn/wk8+fPL7ocqa4Z6JLq0t/+7d/yF3/xF1xzzTXceuutRZcj1T0DXVLd+fznP88Xv/hFPve5z/H1r3+96HKkhjCy6AIkqadrr72WG2+8kb/+67/mS1/6UtHlSA3DQJdUN6688kpuvfVWvvrVr/K5z32u6HKkhmKgS6oLH/vYx5g/fz433ngjn/70p4suR2o4Brqkws2aNYuFCxfyT//0T1x55ZVFlyM1JANdUqHOPfdc7r//fv7lX/6Fj3/840WXIzUsA11SYU4//XQeeughbr/9di6++OKiy5EamoEuqRAnnXQSTz/9NAsXLuQP/uAPii5HangGuqSaSilx5JFHsmrVKu655x7OO++8okuSsmCgS6qZlBITJkxg06ZN/OQnP+Hss88uuiQpGwa6pJpIKdHa2sobb7zBz3/+c04//fSiS5KyYqBLGnY7d+5kxIgRACxevJj3ve99BVck5cdAlzSseob5k08+yUknnVRwRVKeDHRJw+att95i5MjSy8yzzz7LcccdV3BFUr4MdEnDYseOHYwaNQqAFStWcNRRRxVckZQ3A11S1W3fvp399tsPgNWrVzNlypSCK5LyZ6BLqqo33niDMWPGAPDrX/+aiRMnFlyR1BwMdElV093dzdixYwH4zW9+w4QJEwquSGoeBrqkqtiyZQvjxo0D4OWXX+aAAw4ouCKpubQUXYCkxrd58+bdYf7f//3fhrlUAANdUkVeeeUVxo8fD8Brr73Gu9/97oIrkpqTgS5pyDZs2MCBBx4IwNatW3cfpUuqPQNd0pCsW7eOQw45BIDXX3+d1tbWgiuSmpuBLmnQ1qxZw6RJkwDYtm0b+++/f8EVSTLQJQ3KL3/5S6ZOnQrAm2++yejRowuuSBIY6JIG4bnnnuPoo48GSrd23XWfdknFM9AlDchTTz3F8ccfD5S+dGXXN6hJqg8GuqR+LVmyhJNPPhkohXlLiy8dUr3xX6WkffrFL35BW1sbY8aMYefOnYa5VKf8lympTz/96U8544wzOOigg9i6dSsRUXRJkvpQlUCPiA9FxPMRsSIirutle0TEjeXtT0bE9GqMK2n43HvvvZxzzjkcccQRbNiwwTCX6lzFgR4RI4CbgBnACcClEXHCXt1mAMeUfzqAmysdV9Lw+eEPf8j555/PiSeeyMqVKw1zqQFU4wj9VGBFSmllSmk78F1g1l59ZgHfSSUPAeMj4rAqjC2pyr7//e9z4YUXctppp/HUU08VXY6kAapGoE8CXuyxvrbcNtg+AERER0QsjojFGzdurEJ5kgbjqaee4iMf+Qi/+MUvii5F0iBU464QvZ2LS0PoU2pMqRPoBGhra+u1j6Th8+Uvf7noEiQNQTWO0NcCk3usHw6sG0IfSZI0RNUI9EeBYyLiiIgYDcwGFu7VZyFweflq99OAzSml9VUYW5IkUYVT7imlHRFxDXAPMAL4dkppWURcVd5+C7AImAmsALqBT1Q6riRJeltVPoeeUlqUUvpfKaWjUkpzy223lMOc8tXtV5e3n5RSWlyNcSU1lq4umDYNWlpKy66uoiuS8uFXJUmqia4u6OiA7u7S+urVpXWA9vbi6pJy4a1fJdXEnDlvh/ku3d2ldkmVM9Al1cSaNYNrlzQ4BrqkmpgyZXDtkgbHQJdUE3PnQmvrnm2traV2SZUz0CXVRHs7dHbC1KkQUVp2dnpBnFQtXuUuqWba2w1wabh4hC5JUgYMdEmSMmCgS5KUAQNdkqQMGOiSJGXAQJckKQMGuiRJGTDQJUnKgIEuSVIGDHRJkjJgoEuSlAEDXZKkDBjokiRlwECXJCkDBrokSRkw0CVJyoCBLklSBgx0SZIyYKBLkpQBA12SpAwY6JIkZcBAlyQpAwa6JEkZMNAlScqAgS5JUgYMdEmSMmCgS5KUAQNdkqQMGOiSJGXAQJckKQMGuiRJGTDQJUnKgIEuSVIGDHRJkjJgoEuSlAEDXZKkDBjokiRlwECXJCkDIyv55Yg4APgeMA1YBVySUnq1l36rgP8B3gJ2pJTaKhlXkiTtqdIj9OuA+1NKxwD3l9f78oGU0imGuSRJ1VdpoM8Cbis/vg34cIXPJ0mShqDSQD8kpbQeoLyc0Ee/BNwbEUsioqPCMSVJ0l76fQ89Iu4DDu1l05xBjHNmSmldREwAfhQRz6WUHuhjvA6gA2DKlCmDGEKSpObVb6CnlM7ta1tE/CYiDksprY+Iw4ANfTzHuvJyQ0QsAE4Feg30lFIn0AnQ1taW+t8FSZJU6Sn3hcAV5cdXAHfs3SEixkbEuF2PgfOApyscV5Ik9VBpoH8F+GBEvAB8sLxOREyMiEXlPocAD0bEUuAR4M6U0t0VjitJknqo6HPoKaWXgd/vpX0dMLP8eCXwO5WMI0mS9s07xUmSlAEDXZKkDBjokiRlwECXJCkDBrokSRkw0CVJyoCBLklSBgx0SZIyYKBLkpQBA12SpAwY6JIkZcBAlyQpAwa6JEkZMNAlScqAgS5JUgYMdEmSMmCgS5KUAQNdkqQMGOiSJGXAQJckKQMGuiRJGTDQJUnKgIEuSVIGDHRJkjJgoEuSlAEDXZKkDBjokiRlwECXJCkDBrokSRkw0CVJyoCBLklSBgx0SUPT1QXTpkFLS2nZ1VV0RVJTG1l0AZIaUFcXdHRAd3dpffXq0jpAe3txdUlNzCN0SYM3Z87bYb5Ld3epXVIhDHRJg7dmzeDaJQ07A13S4E2ZMrh2ScPOQJc0eHPnQmvrnm2traV2SYUw0CUNXns7dHbC1KkQUVp2dnpBnFQgr3KXNDTt7Qa4VEc8QpckKQMGuiRJGTDQJUnKgIEuSVIGDHRJkjJgoEuSlIGKAj0iPhoRyyJiZ0S07aPfhyLi+YhYERHXVTKmJEl6p0qP0J8GLgIe6KtDRIwAbgJmACcAl0bECRWOK0mSeqjoxjIppWcBImJf3U4FVqSUVpb7fheYBTxTydiSJOlttXgPfRLwYo/1teU2SZJUJf0eoUfEfcChvWyak1K6YwBj9Hb4nvYxXgfQATDFb26SJGlA+g30lNK5FY6xFpjcY/1wYN0+xusEOgHa2tr6DH5JkvS2WpxyfxQ4JiKOiIjRwGxgYQ3GlSSpaVT6sbU/jIi1wOnAnRFxT7l9YkQsAkgp7QCuAe4BngX+LaW0rLKyJUlST5Ve5b4AWNBL+zpgZo/1RcCiSsaSJEl9805xkiRlwECXJCkDBrokSRkw0CVJyoCBLklSBgx0SZIyYKBLkpQBA12SpAwY6JIkZcBAlyQpAwa6JEkZMNAlScqAgS5JUgYMdEmSMmCgS5KUAQNdkqQMGOiSJGXAQJckKQMGuiRJGTDQJUnKgIEuSVIGDHRJkjJgoEuSlAEDXZKkDBjokiRlwECXJCkDBrokSRkw0CVJyoCBLqm2urpg2jRoaSktu7qKrkjKwsiiC5DURLq6oKMDurtL66tXl9YB2tuLq0vKgEfokmpnzpy3w3yX7u5Su6SKGOiSamfNmsG1SxowA11S7UyZMrh2SQNmoEuqnblzobV1z7bW1lK7pIoY6JJqp70dOjth6lSIKC07O70gTqoCr3KXVFvt7Qa4NAw8QpckKQMGuiRJGTDQJUnKgIEuSVIGDHRJkjJgoEuSlAEDXZKkDBjokiRlwECXJCkDBrokSRmoKNAj4qMRsSwidkZE2z76rYqIpyLiiYhYXMmYkiTpnSq9l/vTwEXAtwbQ9wMppU0VjidJknpRUaCnlJ4FiIjqVCNJkoakVu+hJ+DeiFgSER376hgRHRGxOCIWb9y4sUblSZLU2Po9Qo+I+4BDe9k0J6V0xwDHOTOltC4iJgA/iojnUkoP9NYxpdQJdAK0tbWlAT6/JElNrd9ATymdW+kgKaV15eWGiFgAnAr0GuiSJGnwhv2Ue0SMjYhxux4D51G6mE6SJFVJpR9b+8OIWAucDtwZEfeU2ydGxKJyt0OAByNiKfAIcGdK6e5KxpUkSXuq9Cr3BcCCXtrXATPLj1cCv1PJOJIkad+8U5wkSRkw0CVJyoCBLklSBgx0SZIyYKBLkpQBA12SpAwY6JIkZcBAlyQpAwa6JEkZMNAlScqAgS5JUgYMdEmSMmCgS5KUAQNdza2rC6ZNg5aW0rKrq+iKJGlIKvr6VKmhdXVBRwd0d5fWV68urQO0txdXlyQNgUfoal5z5rwd5rt0d5faJanBGOhqXmvWDK5dkuqYga7mNWXK4NolqY4Z6Gpec+dCa+ueba2tpXZJajAGuppXezt0dsLUqRBRWnZ2ekGcpIbkVe5qbu3tBrikLHiELklSBgx0SZIyYKBLkpQBA12SGoG3KVY/vChOkuqdtynWAHiELkn1ztsU980zF7t5hC5J9c7bFPfOMxd78AhdkuqdtynunWcu9mCgS1K98zbFvfPMxR4MdEmqd96muHeeudiDgS5JjaC9HVatgp07S8tmD3PwzMVeDHRJUmPyzMUevMpdktS4/IKl3TxClyQpAwa6JEkZMNAlScqAgS5JUgYMdEmSMmCgS5KUAQNdkqQMGOiSJGXAQJckKQMGuiRJGTDQJUnKQEWBHhF/HxHPRcSTEbEgIsb30e9DEfF8RKyIiOsqGVOSJL1TpUfoPwJOTCmdDCwHPr93h4gYAdwEzABOAC6NiBMqHFeSJPVQUaCnlO5NKe0orz4EHN5Lt1OBFSmllSml7cB3gVmVjCtJkvZUzffQPwnc1Uv7JODFHutry22SJKlK+v0+9Ii4Dzi0l01zUkp3lPvMAXYAXb09RS9taR/jdQAd5dVtEfF0fzU2qIOATUUXMYzcv8bm/jWunPcN8t+/Y4f6i/0Gekrp3H1tj4grgAuA308p9RbUa4HJPdYPB9btY7xOoLP83ItTSm391diIct43cP8anfvXuHLeN2iO/Rvq71Z6lfuHgP8LXJhS6u6j26PAMRFxRESMBmYDCysZV5Ik7anS99C/AYwDfhQRT0TELQARMTEiFgGUL5q7BrgHeBb4t5TSsgrHlSRJPfR7yn1fUkpH99G+DpjZY30RsGgIQ3QOsbRGkPO+gfvX6Ny/xpXzvoH716fo/W1vSZLUSLz1qyRJGaibQM/9NrIR8dGIWBYROyOizys0I2JVRDxVviZhyFc71tog9q9R5++AiPhRRLxQXr6nj34NM3/9zUWU3Fje/mRETC+izqEawP6dExGby3P1RER8sYg6hyIivh0RG/r6WG8Gc9ff/jXs3AFExOSI+HFEPFt+3by2lz6Dn8OUUl38AOcBI8uPvwp8tZc+I4BfAkcCo4GlwAlF1z7A/Tue0ucLfwK07aPfKuCgousdjv1r8Pn7GnBd+fF1vf19NtL8DWQuKF0Hcxele0mcBjxcdN1V3r9zgP9XdK1D3L+zgOnA031sb9i5G+D+Nezcles/DJhefjyO0q3TK/73VzdH6Cnz28imlJ5NKT1fdB3DZYD717DzR6nO28qPbwM+XGAt1TCQuZgFfCfRHVGyAAACcUlEQVSVPASMj4jDal3oEDXy31q/UkoPAK/so0sjz91A9q+hpZTWp5QeKz/+H0qfANv7DqqDnsO6CfS9NPNtZBNwb0QsKd81LyeNPH+HpJTWQ+kfIzChj36NMn8DmYtGnq+B1n56RCyNiLsi4rdrU1pNNPLcDVQWcxcR04D3Ag/vtWnQc1jRx9YGq9a3ka21gezfAJyZUloXERMofb7/ufL/VgtXhf1r2PkbxNPU7fztZSBzUdfz1Y+B1P4YMDWltCUiZgL/ARwz7JXVRiPP3UBkMXcR8S7g34E/Sym9tvfmXn5ln3NY00BPNb6NbK31t38DfI515eWGiFhA6dRhXQRCFfavYecvIn4TEYellNaXT3tt6OM56nb+9jKQuajr+epHv7X3fAFNKS2KiG9GxEEppRzuE97Ic9evHOYuIkZRCvOulNIPeuky6Dmsm1Pu4W1kiYixETFu12NKFwrm9OU0jTx/C4Eryo+vAN5xRqLB5m8gc7EQuLx8te1pwOZdbzs0gH73LyIOjYgoPz6V0uvhyzWvdHg08tz1q9Hnrlz7rcCzKaXr++g2+Dks+mq/Hlf0raD0fsET5Z9byu0TgUV7Xfm3nNIVrHOKrnsQ+/eHlP7HtQ34DXDP3vtH6YrcpeWfZbntX4PP34HA/cAL5eUBjT5/vc0FcBVwVflxADeVtz/FPj6dUY8/A9i/a8rztJTShbhnFF3zIPZtPrAeeLP87+7/ZDZ3/e1fw85duf7/Ten0+ZM9Mm9mpXPoneIkScpA3ZxylyRJQ2egS5KUAQNdkqQMGOiSJGXAQJckKQMGuiRJGTDQJUnKgIEuSVIG/j+/aNfI9wG7mgAAAABJRU5ErkJggg==\n",
+      "text/plain": [
+       "<Figure size 576x576 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "P = np.array([[1, 1]]) # Define a single plane. \n",
+    "fig, ax1 = plt.subplots(figsize=(8, 8)) # Create a plot\n",
+    "\n",
+    "plot_vectors([P], axes=[2, 2], ax=ax1) # Plot the plane P as a vector\n",
+    "\n",
+    "# Plot  random points. \n",
+    "for i in range(0, 10):\n",
+    "        v1 = np.array(np.random.uniform(-2, 2, 2)) # Get a pair of random numbers between -4 and 4 \n",
+    "        side_of_plane = np.sign(np.dot(P, v1.T)) \n",
+    "        \n",
+    "        # Color the points depending on the sign of the result of np.dot(P, point.T)\n",
+    "        if side_of_plane == 1:\n",
+    "            ax1.plot([v1[0]], [v1[1]], 'bo') # Plot blue points\n",
+    "        else:\n",
+    "            ax1.plot([v1[0]], [v1[1]], 'ro') # Plot red points\n",
+    "\n",
+    "plt.show()\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The first thing to note is that the vector that defines the plane does not mark the boundary between the two sides of the plane. It marks the direction in which you find the 'positive' side of the plane. Not intuitive at all!\n",
+    "\n",
+    "If we want to plot the separation plane, we need to plot a line that is perpendicular to our vector `P`. We can get such a line using a $90^o$ rotation matrix.\n",
+    "\n",
+    "Feel free to change the direction of the plane `P`."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/png": "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FHMScHoWmx49esjdNWPGDLVp00ZHHXWUzEx33313g/ZTWiqVlUWfpZpFY1kZM5C32y4a99wzbA4gm1HMScDpWey6deumxYsX66uvvlKXLl10wgknyMx0880313sfpaXS9OlSOh2NuV7KFRXRGPM8OwA/QjEnAadnTWajjTbSrFmzNH/+fG2xxRb63e9+JzPTVVddJXcPHS+j9O4djSUlYXMA2Y5iTgpOz5rUBhtsoKlTp+qbb77Rz3/+c11wwQVKpVK69NJLKeh6eO21aGyi28YBrIJiRk5p166dKioqtGTJEu233366/PLLlUqldM455yidToeOl1h77RWNvXqFzQHkAooZOamwsFAvvviili1bpv79++u6665TXl6efvOb36i2tjZ0vET517+isRlWQQUgihk5rmXLlnrqqae0YsUKlZaW6rbbblN+fr6OPfZYrVixInS8RDj44Gjs0SNsDiBXUMyApPz8fN1zzz2qra3Vb3/7Wz300ENq0aKF+vbtq2XLloWOF8zjj0cjX+oFNB+KGVhFKpXSzTffrHQ6rd///vd67rnn1Lp1a/Xp00dLliwJHa/ZDRggtWvHLfVAc6KYgdUwM1155ZVKp9P605/+pDfeeENt27bVDjvsoG+++SZ0vGaxcqn2qVPD5gByDcUMrIGZ6Y9//KPS6bSuueYaTZ48Weuvv74222wzzZs3L3S8JjVokLTJJlLnzqGTALmFYgbqwcx0zjnnyN1VVlamzz77TJ06dVLHjh315Zdfho4Xu7KyaJw0KWwOIBdRzEADnXbaaXJ33XvvvZo/f7423nhjtWzZUtOnTw8dLTZDhkhbby1tsEHoJEDuoZiBdTRw4EC5ux5//HFVV1dr0003lZnpo48+Ch2tUUaNisY33wybA8hVFDPQSIcffrjcXf+qW4ljyy23lJlp8uTJgZM1nLt0/vnSLrtEs7EBND+KGYjJgQceKHfXa3ULS++www4yM7311luBk9XfiBHROH582BxALqOYgZj16dNH7q6JEydKknbddVeZmV5++eXAydbMPSrmAw74328hBdB8KGagiey8885yd7333nuSpH333VdmprFjxwZOtnrnnx+NY8aEzQHkOooZaGLbbLON3F3Tpk2TJPXr109mpkceeSRwsu+l09I110hHHim1bBk6DZDbKGagmWy++eZyd82YMUPrrbeejj76aJmZ7rrrrtDRNGRIND7wQNgcAChmoNl169ZN3377rb766it17dpVJ554osxMN910U5A8tbXSrbdKJ54o5ecHiQBgFRQzEMhGG22kmTNnav78+dpqq610xhlnyMz0t7/9Te7ebDkGDYrG225rtkMCWAOKGQipvFwb7LyzPpg6VbXdumnYppvqwgsvVCqV0iWXXNLkBV1dLd1/vzR0qJTi3QBIBP4oAqGUl0uDB0dfduyu1Oef68+zZ2v5bbfpgAMO0MiRI5VKpXTWWWcpnU43SYQjjojGv/+9SXYPYB1QzEAow4ZJVVU/3FZVpRYjRmjcuHFavny5DjvsMP39739XXl6eTj75ZNXW1sZ2+GXLpLFjpYsvlsxi2y2ARqKYgVBmzFjj9hYtWuiJJ57QihUrdPzxx+uOO+5Qfn6+jjnmGK1YsaLRhz/wwGj8858bvSsAMaKYgVC6d6/X9vz8fN11112qra3V6aefrocfflgtWrTQwQcfrGXLlq3ToRcvll57TfrrXzlbBpKGYgZCGTnyf9e+LCyMtq9GKpXSTTfdpHQ6rQsuuED/+te/1Lp1a+2+++5asmRJgw7dp080/uEP6xIcQFOimIFQSkulsjKpqCg6bS0qih6Xlq7xx1beUpVOp3X55ZfrzTffVNu2bdWrVy8tXLhwrYddsECaPFm64QbOloEksua8X3KlkpISr6ioaPbjAtnq+uuv19lnny1JKioqUkVFhTp27Lja526+ufTpp9GXVgBoHmY20d1L6vPcWM6YzayvmU01s2lmdmEc+wRQf2eddZbcXbfeeqsqKyvVqVMndejQQbNmzfrB8+bMiUr5jjvC5ASwdo0uZjPLk3SjpEMkbSNpoJlt09j9Ami43/zmN3J33X///fr666/VtWtXtWjRQtOnT5ckbbtt9LwTTwyXEcCaxXHGvIukae7+qbtXS7pf0uEx7BfAOvrVr34ld9eTTz6pFStWaNNNN5WZad689/TQQ6HTAViTOIq5q6TPV3k8s27bD5jZYDOrMLOKuXPnxnBYAGvzy1/+Uu6ucePG1W3ppWOOMU2aNCloLgA/LY5iXt28zv+ZVuLuZe5e4u4lnTp1iuGwAOrrgAMOkLvr9ddflyTtuOOOMjNNmDAhcDIAPxZHMc+U1G2Vx5tImvUTzwUQ0B577CF319tvvy1J2m233WRmeumll8IGA/CdOIr5P5J6mtmmZtZC0nGSnoxhvwCayE477SR31/vvvy9J2m+//WRmeuaZZwInA9DoYnb3GklDJT0n6QNJD7r7e43dL4Cmt/XWW8vd9cknnyiVSunQQw+VmekhZogBwcRyH7O7P+PuW7j75u6++vUEASTWZpttptraWn3++edq3769jj32WJmZ7uCGZ6DZsSQngO9ssskmWrhwoWbPnq1NNtlEJ598ssxMN954Y+hoQM6gmAH8jw033FCff/65vv76a2299dYaOnSozExXXHGFQizjC+QSihnAT/rZz36m999/X4sWLdIuu+yiiy66SKlUSsOGDaOggSZCMQNYq7Zt22rChAmqqqrSAQccoL/85S9KpVIaOnSo0ul06HhAVqGYAdRb69atNW7cOC1fvlwDBgzQjTfeqLy8PJ100kmqra0NHQ+IXXm5VFwspVLRWF7e9MekmAE0WIsWLfToo49qxYoVOuGEE3TnnXcqPz9fRx11lFasWBE6HhCL8nJp8GCpsjL6mtTKyuhxU5czxQxgneXn5+vOO+9UbW2tzjjjDD366KNq0aKFDjzwQC1btix0PKBRhg2Tqqp+uK2qKtrelChmAI2WSqV0ww03KJ1O68ILL9S4cePUunVr7bbbblq8eHHoeMA6mTGjYdvjQjEDiI2Z6a9//avS6bRGjhypCRMmaL311lOvXr20cOHC0PGABunevWHb40IxA4idmeniiy+Wu+v666/Xe++9p5/97GcqKioSX/uKTDFypFRY+MNthYXR9qZEMQNoUmeeeabcXaNHj9aMGTO04YYbaoMNNtCsWXwJHZKttFQqK5OKiiSzaCwri7Y3JYo504SYuw/E4JRTTpG764EHHtCCBQvUtWtX5efn67PPPgsdDfhJpaXS9OlSOh2NTV3KEsWcWULN3QdidOyxx8rd9dRTT6m2tlabbbaZzEwffvhh6GhAIlDMmSTU3H2gCfTv31/urhdeeEFS9BWUZqZ33303cDIgLIo5k4Sauw80of3331/urjfeeEOStNNOO8nM9OabbwZOBoRBMWeSUHP3gWaw++67y931zjvvfPfYzDR+/PjAyYDmRTFnklBz94FmtOOOO8rd9f7770uKzqjNTGPGjAmcDE2Nua0RijmThJq7DwSw9dZby9316aefKi8vT/3795eZ6cEHHwwdDU2Aua3fsxDfqVpS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\n",
+      "text/plain": [
+       "<Figure size 576x576 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "P = np.array([[1, 2]])  # Define a single plane. You may change the direction\n",
+    "\n",
+    "# Get a new plane perpendicular to P. We use a rotation matrix\n",
+    "PT = np.dot([[0, 1], [-1, 0]], P.T).T  \n",
+    "\n",
+    "fig, ax1 = plt.subplots(figsize=(8, 8)) # Create a plot with custom size\n",
+    "\n",
+    "plot_vectors([P], colors=['b'], axes=[2, 2], ax=ax1) # Plot the plane P as a vector\n",
+    "\n",
+    "# Plot the plane P as a 2 vectors. \n",
+    "# We scale by 2 just to get the arrows outside the current box\n",
+    "plot_vectors([PT * 4, PT * -4], colors=['k', 'k'], axes=[4, 4], ax=ax1)\n",
+    "\n",
+    "# Plot 20 random points. \n",
+    "for i in range(0, 20):\n",
+    "        v1 = np.array(np.random.uniform(-4, 4, 2)) # Get a pair of random numbers between -4 and 4 \n",
+    "        side_of_plane = np.sign(np.dot(P, v1.T)) # Get the sign of the dot product with P\n",
+    "        # Color the points depending on the sign of the result of np.dot(P, point.T)\n",
+    "        if side_of_plane == 1:\n",
+    "            ax1.plot([v1[0]], [v1[1]], 'bo') # Plot a blue point\n",
+    "        else:\n",
+    "            ax1.plot([v1[0]], [v1[1]], 'ro') # Plot a red point\n",
+    "\n",
+    "plt.show()\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now, let us see what is inside the code that color the points. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "P = np.array([[1, 1]])      # Single plane\n",
+    "v1 = np.array([[1, 2]])     # Sample point 1\n",
+    "v2 = np.array([[-1, 1]])    # Sample point 2\n",
+    "v3 = np.array([[-2, -1]])   # Sample point 3"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[3]])"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "np.dot(P, v1.T)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[0]])"
+      ]
+     },
+     "execution_count": 9,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "np.dot(P, v2.T)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[-3]])"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "np.dot(P, v3.T)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The function below checks in which side of the plane P is located the vector `v`"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def side_of_plane(P, v):\n",
+    "    dotproduct = np.dot(P, v.T) # Get the dot product P * v'\n",
+    "    sign_of_dot_product = np.sign(dotproduct) # The sign of the elements of the dotproduct matrix \n",
+    "    sign_of_dot_product_scalar = sign_of_dot_product.item() # The value of the first item\n",
+    "    return sign_of_dot_product_scalar"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "1"
+      ]
+     },
+     "execution_count": 12,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "side_of_plane(P, v1) # In which side is [1, 2]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0"
+      ]
+     },
+     "execution_count": 13,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "side_of_plane(P, v2) # In which side is [-1, 1]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "-1"
+      ]
+     },
+     "execution_count": 14,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "side_of_plane(P, v3) # In which side is [-2, -1]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Hash Function with multiple planes\n",
+    "\n",
+    "In the following section, we are going to define a hash function with a list of three custom planes in 2D."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "P1 = np.array([[1, 1]])   # First plane 2D\n",
+    "P2 = np.array([[-1, 1]])  # Second plane 2D\n",
+    "P3 = np.array([[-1, -1]]) # Third plane 2D\n",
+    "P_l = [P1, P2, P3]  # List of arrays. It is the multi plane\n",
+    "\n",
+    "# Vector to search\n",
+    "v = np.array([[2, 2]])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The next function creates a hash value based on a set of planes. The output value is a combination of the side of the plane where the vector is localized with respect to the collection of planes.\n",
+    "\n",
+    "We can think of this list of planes as a set of basic hash functions, each of which can produce only 1 or 0 as output."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def hash_multi_plane(P_l, v):\n",
+    "    hash_value = 0\n",
+    "    for i, P in enumerate(P_l):\n",
+    "        sign = side_of_plane(P,v)\n",
+    "        hash_i = 1 if sign >=0 else 0\n",
+    "        hash_value += 2**i * hash_i\n",
+    "    return hash_value"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "3"
+      ]
+     },
+     "execution_count": 17,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "hash_multi_plane(P_l, v) # Find the number of the plane that containes this value"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Random Planes\n",
+    "\n",
+    "In the cell below, we create a set of three random planes"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[[ 1.76405235  0.40015721]\n",
+      " [ 0.97873798  2.2408932 ]\n",
+      " [ 1.86755799 -0.97727788]]\n"
+     ]
+    }
+   ],
+   "source": [
+    "np.random.seed(0)\n",
+    "num_dimensions = 2 # is 300 in assignment\n",
+    "num_planes = 3 # is 10 in assignment\n",
+    "random_planes_matrix = np.random.normal(\n",
+    "                       size=(num_planes,\n",
+    "                             num_dimensions))\n",
+    "print(random_planes_matrix)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "v = np.array([[2, 2]])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The next function is similar to the `side_of_plane()` function, but it evaluates more than a plane each time. The result is an array with the side of the plane of `v`, for the set of planes `P`"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Side of the plane function. The result is a matrix\n",
+    "def side_of_plane_matrix(P, v):\n",
+    "    dotproduct = np.dot(P, v.T)\n",
+    "    sign_of_dot_product = np.sign(dotproduct) # Get a boolean value telling if the value in the cell is positive or negative\n",
+    "    return sign_of_dot_product"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Get the side of the plane of the vector `[2, 2]` for the set of random planes. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([[1.],\n",
+       "       [1.],\n",
+       "       [1.]])"
+      ]
+     },
+     "execution_count": 21,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "sides_l = side_of_plane_matrix(\n",
+    "            random_planes_matrix, v)\n",
+    "sides_l"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now, let us use the former function to define our multiplane hash function"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def hash_multi_plane_matrix(P, v, num_planes):\n",
+    "    sides_matrix = side_of_plane_matrix(P, v) # Get the side of planes for P and v\n",
+    "    hash_value = 0\n",
+    "    for i in range(num_planes):\n",
+    "        sign = sides_matrix[i].item() # Get the value inside the matrix cell\n",
+    "        hash_i = 1 if sign >=0 else 0\n",
+    "        hash_value += 2**i * hash_i # sum 2^i * hash_i\n",
+    "        \n",
+    "    return hash_value"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Print the bucket hash for the vector `v = [2, 2]`. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "7"
+      ]
+     },
+     "execution_count": 23,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "hash_multi_plane_matrix(random_planes_matrix, v, num_planes)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#### Note\n",
+    "This showed you how to make one set of random planes.  You will make multiple sets of random planes in order to make the approximate nearest neighbors more accurate."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Document vectors\n",
+    "\n",
+    "Before we finish this lab, remember that you can represent a document as a vector by adding up the word vectors for the words inside the document. In this example, our embedding contains only three words, each represented by a 3D array."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "word_embedding = {\"I\": np.array([1,0,1]),\n",
+    "                   \"love\": np.array([-1,0,1]),\n",
+    "                   \"learning\": np.array([1,0,1])\n",
+    "                  }\n",
+    "words_in_document = ['I', 'love', 'learning', 'not_a_word']\n",
+    "document_embedding = np.array([0,0,0])\n",
+    "for word in words_in_document:\n",
+    "    document_embedding += word_embedding.get(word,0)\n",
+    "    \n",
+    "print(document_embedding)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "**Congratulations! You've now completed this lab on hash functions and multiplanes!**"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.1"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
